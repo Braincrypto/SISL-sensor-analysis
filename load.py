@@ -1,6 +1,4 @@
-import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 
 ################
 # Loading Data #
@@ -14,8 +12,7 @@ session_colname = u'session_id'
 
 meta_colnames = [
     datetime_colname,
-    index_colname, 
-    session_colname,]
+    index_colname,]
 
 accel_colnames = [ 
     u'accel_x', 
@@ -28,72 +25,81 @@ touch_finger_colnames = [
     u'touch_y_%d', 
     u'touch_phase_%d',]
 
+trial_row_id_colname = u'trial_row_id'
+trial_value_colname = u'trial_value'
+
+trial_colnames = [
+    trial_row_id_colname,
+    trial_value_colname,
+]
+
+event_type_colname = u'event_type'
+event_value_colname = u'event_value'
+
+event_colnames = [
+    event_type_colname,
+    event_value_colname,
+]
+
+key_correct_colname = "key_correct"
+key_incorrect_colname = "key_incorrect"
+miss_colname = "miss"
+success_colname = "success"
+success_aggregate_colname = "success_aggregate"
+
+cue_pos_px_colnames = [
+    u'cue_pos_x_pixels',
+    u'cue_pos_y_pixels',
+]
+
+cue_pos_norm_colnames = [
+    u'cue_pos_x_norm',
+    u'cue_pos_y_norm',
+]
+
+cue_vy_norm_colname = u'cue_vy_norm'
+
+cue_colnames = cue_pos_px_colnames + cue_pos_norm_colnames + [cue_vy_norm_colname]
+
+cursor_pos_x_px = u'cursor_pos_x_pixels'
+cursor_vx_colname = u'cursor_vx'
+
+cursor_colnames = [cursor_pos_x_px, cursor_vx_colname]
+
 def get_finger_cols(finger_id):
     return [s % finger_id for s in touch_finger_colnames]
 
 all_touch_finger_colnames = reduce(lambda u, v: u + get_finger_cols(v), range(5), [])
-colnames = meta_colnames + accel_colnames + all_touch_finger_colnames
+sensor_colnames = meta_colnames + [session_colname] + accel_colnames + all_touch_finger_colnames
+event_colnames = meta_colnames + trial_colnames + event_colnames + cue_colnames + cursor_colnames + [session_colname]
 
 # Reading csv
 
-data = pd.read_csv(
-    'data/1.6113_BUTTON_sensor_2014-09-26.csv',
-    names=colnames,
-    index_col=index_colname,
-    skiprows=1,
-    sep=',',
-)
+def get_data(name):
+    sensor_data = pd.read_csv(
+        u'data/sensor.slide.1.' + name + u'.csv',
+        names=sensor_colnames,
+        index_col=index_colname,
+        skiprows=1,
+        sep=',',
+        low_memory=False,
+    )
 
-#############
-# Computing #
-#############
+    event_data = pd.read_csv(
+        u'data/event.slide.1.' + name + u'.csv',
+        #names=event_colnames,
+        index_col=index_colname,
+        #skiprows=1,
+        sep=",",
+        low_memory=False,
+    )
 
-# Acceleration diff
+    return event_data, sensor_data
 
-accel_diff_colnames = [ 
-    u'accel_x_diff', 
-    u'accel_y_diff', 
-    u'accel_z_diff',]
+def get_all_data(list_file):
+    with open(list_file) as f:
+        for line in f.readlines():
+            name = line.strip()
+            ed, sd = get_data(name)
+            yield ed, sd, name
 
-accel_diff_norm_colname = 'accel_diff_norm'
-accel_shaking_colname = 'accel_shaking_colname'
-
-def diff_offset(df, cpt_col, res_col, window_size):
-    """Computes difference between row i and row i-window_size for all columns in cpt_col.
-    Stores result into res_col and return a new dataframe."""
-    # We need to drop the index to have a shared int index to compute substraction
-    up = df.tail(-window_size).reset_index() 
-    down = df.head(-window_size).reset_index()
-    # Substract
-    up[res_col] = up[cpt_col] - down[cpt_col]
-    # Reindex
-    up = up.set_index(df.index.name)
-    up = up.reindex(df.index)
-    return up
-
-# Frequency used to compute the shaking factor
-freq = 10
-
-d = diff_offset(data, accel_colnames, accel_diff_colnames, 1)
-data[accel_diff_colnames] = d[accel_diff_colnames]
-
-data[accel_diff_norm_colname] = np.square(data[accel_diff_colnames]).sum(axis=1)
-
-cs = data[accel_diff_norm_colname].cumsum()
-d = diff_offset(cs, accel_diff_norm_colname, accel_shaking_colname, freq)
-data[accel_shaking_colname] = d[accel_shaking_colname]
-
-
-
-# freq = 60
-# buf = data[accel_colnames].ix[1:freq]
-# result = []
-# 
-# for i in range(freq, len(data)):
-#     print("Computing %d" % i)
-#     result.append(shaking(buf))
-#     buf[freq] = data[accel_colnames].ix[i]
-#     buf = buf.ix[1:freq]
-# 
-# # Select data with touch.
-# data_touch = data[data['touch_finger_id_0'].notnull()]
