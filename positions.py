@@ -3,7 +3,6 @@ import matplotlib as mpl
 from matplotlib.colors import LogNorm
 from matplotlib import pyplot as plt
 
-ed, sd = get_data('0459_2014-10-02')
 
 def plot_positions(sensor_data, save_filename=None):
     filtered_data = sensor_data[['touch_x_0','touch_y_0']].dropna()
@@ -18,13 +17,18 @@ def plot_positions(sensor_data, save_filename=None):
         fig.savefig(save_filename)
         plt.close(fig)
 
-master = None
+exp_types = ['button', 'slide']
 
-for ed, sd, name in get_all_data('ids-slide.txt'):
-    if master is None:
-        master = sd
-    else:
-        master = pd.concat([master, sd])
-    plot_positions(sd, 'imgs/heatmap-position-' + name + '.png')
 
-plot_positions(master, save_filename='imgs/heatmap-position-all.png')
+for exp_type in exp_types:
+    print('Loading experiment [%s]' % exp_type)
+
+    master = None
+    for event_data, sensor_data, file_name in get_all_data('ids-%s.txt' % exp_type):
+        if master is None:
+            master = sensor_data
+        else:
+            master = pd.concat([master, sensor_data])
+        plot_positions(sensor_data, 'imgs/heatmap-position-' + file_name + '.png')
+
+    plot_positions(master, save_filename='imgs/heatmap-position-%s-all.png' % exp_type)

@@ -77,7 +77,7 @@ event_colnames = meta_colnames + trial_colnames + event_colnames + cue_colnames 
 
 def get_data(name):
     sensor_data = pd.read_csv(
-        u'data/sensor.slide.1.' + name + u'.csv',
+        u'data/sensor.%s' % name,
         names=sensor_colnames,
         index_col=index_colname,
         skiprows=1,
@@ -86,7 +86,7 @@ def get_data(name):
     )
 
     event_data = pd.read_csv(
-        u'data/event.slide.1.' + name + u'.csv',
+        u'data/event.%s' % name,
         #names=event_colnames,
         index_col=index_colname,
         #skiprows=1,
@@ -100,6 +100,9 @@ def get_all_data(list_file):
     with open(list_file) as f:
         for line in f.readlines():
             name = line.strip()
+            if name[0] == '#':
+                continue
+
             ed, sd = get_data(name)
             yield ed, sd, name
 
