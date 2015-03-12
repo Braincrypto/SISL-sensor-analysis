@@ -76,15 +76,26 @@ event_colnames = meta_colnames + trial_colnames + event_colnames + cue_colnames 
 # Reading csv
 
 def get_data(name):
-    sensor_data = pd.read_csv(
-        u'data/sensor.%s' % name,
-        names=sensor_colnames,
-        index_col=index_colname,
-        skiprows=1,
-        sep=',',
-        low_memory=False,
-    )
-
+    with open('data/sensor.%s' % name) as f:
+        line = f.readline()
+        if '...' in line:
+            sensor_data = pd.read_csv(
+                u'data/sensor.%s' % name,
+                names=sensor_colnames,
+                index_col=index_colname,
+                skiprows=1,
+                sep=',',
+                low_memory=False,
+            )
+        else:
+            sensor_data = pd.read_csv(
+                u'data/sensor.%s' % name,
+                #names=sensor_colnames,
+                index_col=index_colname,
+                sep=',',
+                low_memory=False,
+            )
+    
     event_data = pd.read_csv(
         u'data/event.%s' % name,
         #names=event_colnames,
