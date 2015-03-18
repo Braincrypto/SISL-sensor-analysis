@@ -22,7 +22,7 @@ def plot_positions(x, y, save_filename=None):
         plt.show()
     else:
         print('Saving file [%s]' % (save_filename,))
-        fig.savefig(save_filename)
+        plt.savefig(save_filename)
         plt.close(fig)
 
 exp_types = [
