@@ -4,6 +4,8 @@ from dtw import dtw
 
 from matplotlib import pyplot as plt
 
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+#from scipy.spatial.distance import squareform
 
 ppt_colname = 'ppt'
 event_type_colname = 'event_type'
@@ -75,19 +77,42 @@ def get_matrix_inter(data, participants):
 
     return mat
 
-def plot_matrix(mat, save_filename=None):
+def plot_matrix(mat, method='ward', save_filename=None):
     if save_filename is not None:
         fig = plt.figure()
-
-    plt.matshow(mat)
-    plt.colorbar()
     
+    # Compute and plot first dendrogram.
+    fig = plt.figure(figsize=(8,8))
+    ax1 = fig.add_axes([0.09,0.1,0.2,0.6])
+    Y = linkage(mat, method=method)
+    Z = dendrogram(
+            Y, #p=3, truncate_mode='level',
+            orientation='right')
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+
+    # Plot distance matrix.
+    axmatrix = fig.add_axes([0.3,0.1,0.6,0.6])
+    idx1 = Z['leaves']
+    nmat = mat[idx1,:]
+    nmat = nmat[:,idx1]
+
+    cax = axmatrix.matshow(nmat, aspect='auto', origin='lower')
+    fig.colorbar(cax)
+
+    axmatrix.set_xticks([])
+    axmatrix.set_yticks([])
+    
+    fl = fcluster(Y, 3, criterion='maxclust')
+
     if save_filename is None:
         plt.show()
     else:
         print('Saving file [%s]' % save_filename)
         plt.savefig(save_filename)
         plt.close(fig)
+
+    return fl
 
 def get_ordered_participants(data):
     cue_created = data[
@@ -105,6 +130,9 @@ def get_ordered_participants(data):
 
 
 trace_data = pd.read_csv('data/test_traces.csv')
+real_clusters = [1 for i in range(4 * 15)] + \
+        [2 for i in range(3 * 15)] + \
+        [3 for i in range(7 * 15)]
 
 def get_participant_dist_intra(trace_data=trace_data):
     participants = trace_data[ppt_colname].unique()
@@ -123,7 +151,7 @@ def get_participant_dist_inter(trace_data=trace_data):
 
     participants_grouped = get_ordered_participants(data)
     participants = reduce(lambda x, y: x + y, participants_grouped, [])
-    participants.remove(9640.0) # removing bad player
+    participants.remove(9640.0) # removing bad player -- 9423 is pretty bad too..
     print participants
 
     seq_trace_data = remove_cue_event(data)
@@ -133,3 +161,22 @@ def get_participant_dist_inter(trace_data=trace_data):
     plot_matrix(mat, 'imgs/all-inter-seq-dist.png')
     np.savetxt("data/all-inter-seq-dist.csv", mat, delimiter=",")
 
+def compare_clusters(test, real):
+    n = len(test)
+
+    tp, fp = 0., 0.
+    tn, fn = 0., 0.
+    for i in range(n):
+        for j in range(i+1, n):
+            if real[i] == real[j]:
+                if (test[i] == test[j]):
+                    tp += 1
+                else:
+                    fn += 1
+            else:    
+                if (test[i] != test[j]):
+                    tn += 1
+                else:
+                    fp += 1
+
+    return (tp + tn) / (tp + tn + fp + fn), tp / (tp + fp), tp / (tp + fn)
